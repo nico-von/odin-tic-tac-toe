@@ -1,4 +1,5 @@
-const MAX_ROWS_COLS = 3;
+const MAX_ROWS_COLS = 6;
+const BLOCKS_NEEDED_TO_WIN = 3;
 
 const game = (function () {
     const gameboard = [];
@@ -40,8 +41,8 @@ const game = (function () {
     //recursive board check
     function _checkRowsCols(row, col, direction = "rows", total) {
         //base case
-        if (Math.abs(total) == MAX_ROWS_COLS) {
-            return total / MAX_ROWS_COLS;
+        if (Math.abs(total) == BLOCKS_NEEDED_TO_WIN) {
+            return total / BLOCKS_NEEDED_TO_WIN;
         }
 
         const currCell = _getFromBoard(row, col);
