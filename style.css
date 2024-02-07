@@ -7,6 +7,11 @@
     font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
 }
 
+h1 {
+    word-wrap: break-word;
+    text-align: center;
+    width: 30%;
+}
 .board {
     display: inline-grid;
     margin: 2rem;
