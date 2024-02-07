@@ -1,12 +1,35 @@
-const MAX_ROWS_COLS = 10;
-const BLOCKS_NEEDED_TO_WIN = 4;
 const ROW_DATA_ATTRIB = "data-row-number";
 const COL_DATA_ATTRIB = "data-col-number";
 
-const game = (function (maxRowsCols, blocksNeededToWin) {
+const gameSettings = (function () {
+    let maxRowsColsDiv = document.querySelector("#board-size");
+    let blocksNeededToWinDiv = document.querySelector("#winning-length");
+
+    function getMaxRowsCols() {
+        return parseInt(maxRowsColsDiv.value);
+    }
+    function getBlocksNeededToWin() {
+        return parseInt(blocksNeededToWinDiv.value);
+    }
+    return {
+        getMaxRowsCols,
+        getBlocksNeededToWin
+    }
+})()
+const game = (function () {
+    let maxRowsCols;
+    let blocksNeededToWin;
     const gameboard = [];
     const moves = ["X", "O"];
     let lastMoveIndex = 0;
+
+    function setMaxRowsCols(newMaxRowsCols) {
+        maxRowsCols = newMaxRowsCols;
+    }
+
+    function setBlocksNeededToWin(newBlocksNededToWin) {
+        blocksNeededToWin = newBlocksNededToWin;
+    }
 
     function _getFromBoard(row, col) {
         if (!gameboard[row]) {
@@ -54,39 +77,44 @@ const game = (function (maxRowsCols, blocksNeededToWin) {
         return _checkBoard(nextMove, row, col);
     }
 
-    function _recursiveRelativeCheck(move, row, col, direction = 0, delta = 0, towards = "e", equalities = 1) {
+    function _recursiveRelativeCheck(move, row, col, direction = 0, delta = 0, towards = "e", equalities = 1, winningCells = []) {
         // e means end, s means start
         // for row direction, e is right and s is left
         // for col direction, e is up and s is down 
 
         // to limit the direction
         if (direction > 3) {
-            return;
+            return winningCells;
         }
 
         // check if move won
         if (equalities === blocksNeededToWin) {
-            return true;
+            winningCells.unshift({ row, col }); //add initial row, col to winningCells[0]
+            return winningCells;
         }
 
         // first check right, then check left
         delta = towards == "e" ? delta + 1 : delta - 1;
-        let step, nextMove;
+        let nextRow = row;
+        let nextCol = col;
         switch (direction) {
             case 0: //row
-                nextMove = _getFromBoard(row, col + delta);
+                nextCol = col + delta;
                 break;
             case 1: //col
-                nextMove = _getFromBoard(row + delta, col);
+                nextRow = row + delta;
                 break;
             case 2: //posSlope
-                nextMove = _getFromBoard(row + delta, col + delta);
+                nextRow = row + delta;
+                nextCol = col + delta;
                 break;
             case 3: //negSlope
-                nextMove = _getFromBoard(row - delta, col + delta);
+                nextRow = row - delta;
+                nextCol = col + delta;
                 break;
-
         }
+
+        let nextMove = _getFromBoard(nextRow, nextCol);
 
         // check if next move is similar to move;
         // if not, go back to the next position
@@ -94,19 +122,20 @@ const game = (function (maxRowsCols, blocksNeededToWin) {
         // and without changing equalities,
 
         if ((!nextMove || nextMove != move) && towards == "e") {
-            return _recursiveRelativeCheck(move, row, col, direction, 0, "s", equalities); //reset delta to original value
+            return _recursiveRelativeCheck(move, row, col, direction, 0, "s", equalities, winningCells); //reset delta to original value
         } else if (nextMove === move) {
-            return _recursiveRelativeCheck(move, row, col, direction, delta, towards, equalities + 1);
+            winningCells.push({ row: nextRow, col: nextCol })
+            return _recursiveRelativeCheck(move, row, col, direction, delta, towards, equalities + 1, winningCells);
         } else {
             // if all else fails, go to the next direction
-            return _recursiveRelativeCheck(move, row, col, direction + 1, 0, "e", 1);
+            return _recursiveRelativeCheck(move, row, col, direction + 1, 0, "e", 1, []);
         }
 
     }
 
     function _checkBoard(move, row, col) {
-        let isWinner = _recursiveRelativeCheck(move, row, col);
-        return { moved: move, isWinner }
+        let winners = _recursiveRelativeCheck(move, row, col);
+        return { moved: move, winners }
     }
 
     function resetBoard() {
@@ -116,17 +145,50 @@ const game = (function (maxRowsCols, blocksNeededToWin) {
     return {
         gameboard,
         addMove,
-        resetBoard
+        resetBoard,
+        setMaxRowsCols,
+        setBlocksNeededToWin
     }
 
-})(MAX_ROWS_COLS, BLOCKS_NEEDED_TO_WIN)
+})()
 
-const domHandling = (function (maxRowsCols) {
-    function _render(child) {
-        document.body.append(child);
+const domHandling = (function () {
+    let maxRowsCols;
+    const boardContainer = document.querySelector(".board-container");
+    let board = document.createElement("div");
+    board.classList.add("board");
+
+    let rowsCache = [];
+    let colsCache = [];
+    let gameRunning = true;
+
+    function setMaxRowsCols(newMaxRowsCols) {
+        maxRowsCols = newMaxRowsCols;
+    }
+    function _render(parent, child, prepend = false) {
+        let children = [];
+
+        if (child instanceof Array) {
+            children = child;
+        } else {
+            children.push(child);
+        }
+
+        if (prepend) {
+            parent.prepend(...children);
+            return;
+        }
+        parent.append(...children);
+    }
+
+    function _paintBoard(row, col) {
+        colsCache[row][col].classList.add("selected");
     }
 
     function _cellClickHandler(e) {
+        if (!gameRunning) {
+            return;
+        }
         let rowDiv = e.currentTarget;
         let colDiv = e.target;
         if (!(rowDiv.hasAttribute(ROW_DATA_ATTRIB) && colDiv.hasAttribute(COL_DATA_ATTRIB))) {
@@ -141,39 +203,70 @@ const domHandling = (function (maxRowsCols) {
         }
 
         colDiv.textContent = move.moved;
-        if (move.isWinner) {
-            alert(`${move.moved} won!`)
+        if (move.winners.length > 0) {
+            for (winner of move.winners) {
+                _paintBoard(winner.row, winner.col);
+            }
+            gameRunning = false;
         }
     }
 
     function createBoard() {
-        let board = document.createElement("div");
-        board.classList.add("board");
+        board.removeAttribute("style");
+        board.style.gridTemplateRows = `repeat(${maxRowsCols}, 1fr)`;
+
         for (let i = 0; i < maxRowsCols; i++) {
             let row = document.createElement("div");
             row.classList.add("row");
             row.setAttribute(ROW_DATA_ATTRIB, i);
             row.addEventListener("click", _cellClickHandler);
-            board.appendChild(row);
+            row.removeAttribute("style");
+            row.style.gridTemplateColumns = `repeat(${maxRowsCols}, 1fr)`;
+            rowsCache[i] = row;
+            colsCache[i] = [];
             for (j = 0; j < maxRowsCols; j++) {
                 let col = document.createElement("div");
                 col.classList.add("col");
                 col.setAttribute(COL_DATA_ATTRIB, j);
+                colsCache[i][j] = col;
                 row.appendChild(col);
             }
         }
-        _render(board);
+        _render(boardContainer, board, true);
+        _render(board, rowsCache);
+    }
+
+    function resetBoard() {
+        gameRunning = true;
+        board.replaceChildren();
+        rowsCache = [];
+        colsCache = [];
+        createBoard();
     }
     return {
+        setMaxRowsCols,
         createBoard,
+        resetBoard
     }
 
-})(MAX_ROWS_COLS)
+})()
 
-function main() {
-    domHandling.createBoard();
+function setGame() {
+    console.log(gameSettings.getBlocksNeededToWin());
+    game.setMaxRowsCols(gameSettings.getMaxRowsCols());
+    game.setBlocksNeededToWin(gameSettings.getBlocksNeededToWin());
+    domHandling.setMaxRowsCols(gameSettings.getMaxRowsCols());
 }
 
-window.onload = main;
+const resetButton = document.querySelector(".reset");
+resetButton.addEventListener("click", e => {
+    setGame();
+    game.resetBoard();
+    domHandling.resetBoard();
+});
+
+setGame();
+domHandling.createBoard();
+
 
 
