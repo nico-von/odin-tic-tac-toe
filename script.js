@@ -1,5 +1,5 @@
-const MAX_ROWS_COLS = 6;
-const BLOCKS_NEEDED_TO_WIN = 3;
+const MAX_ROWS_COLS = 10;
+const BLOCKS_NEEDED_TO_WIN = 4;
 const ROW_DATA_ATTRIB = "data-row-number";
 const COL_DATA_ATTRIB = "data-col-number";
 
@@ -51,16 +51,62 @@ const game = (function (maxRowsCols, blocksNeededToWin) {
         }
         _addToBoard(nextMove, row, col);
         _commitNextMove(nextMoveIndex);
-        return _checkBoard(nextMove);
-    }
-    function _recursiveCheck(row, col) {
+        return _checkBoard(nextMove, row, col);
     }
 
-    function _checkBoard(moved) {
-        // check rows and cols
-        let winner = null;
-        winner = _recursiveCheck(0,0);
-        return {moved, winner}
+    function _recursiveRelativeCheck(move, row, col, direction = 0, delta = 0, towards = "e", equalities = 1) {
+        // e means end, s means start
+        // for row direction, e is right and s is left
+        // for col direction, e is up and s is down 
+
+        // to limit the direction
+        if (direction > 3) {
+            return;
+        }
+
+        // check if move won
+        if (equalities === blocksNeededToWin) {
+            return true;
+        }
+
+        // first check right, then check left
+        delta = towards == "e" ? delta + 1 : delta - 1;
+        let step, nextMove;
+        switch (direction) {
+            case 0: //row
+                nextMove = _getFromBoard(row, col + delta);
+                break;
+            case 1: //col
+                nextMove = _getFromBoard(row + delta, col);
+                break;
+            case 2: //posSlope
+                nextMove = _getFromBoard(row + delta, col + delta);
+                break;
+            case 3: //negSlope
+                nextMove = _getFromBoard(row - delta, col + delta);
+                break;
+
+        }
+
+        // check if next move is similar to move;
+        // if not, go back to the next position
+        // originating from the original position
+        // and without changing equalities,
+
+        if ((!nextMove || nextMove != move) && towards == "e") {
+            return _recursiveRelativeCheck(move, row, col, direction, 0, "s", equalities); //reset delta to original value
+        } else if (nextMove === move) {
+            return _recursiveRelativeCheck(move, row, col, direction, delta, towards, equalities + 1);
+        } else {
+            // if all else fails, go to the next direction
+            return _recursiveRelativeCheck(move, row, col, direction + 1, 0, "e", 1);
+        }
+
+    }
+
+    function _checkBoard(move, row, col) {
+        let isWinner = _recursiveRelativeCheck(move, row, col);
+        return { moved: move, isWinner }
     }
 
     function resetBoard() {
@@ -86,17 +132,17 @@ const domHandling = (function (maxRowsCols) {
         if (!(rowDiv.hasAttribute(ROW_DATA_ATTRIB) && colDiv.hasAttribute(COL_DATA_ATTRIB))) {
             return
         }
-        let row = rowDiv.getAttribute(ROW_DATA_ATTRIB);
-        let col = colDiv.getAttribute(COL_DATA_ATTRIB);
+        let row = parseInt(rowDiv.getAttribute(ROW_DATA_ATTRIB));
+        let col = parseInt(colDiv.getAttribute(COL_DATA_ATTRIB));
         let move = game.addMove(row, col);
-        console.log(move)
+
         if (!move) {
             return;
         }
 
         colDiv.textContent = move.moved;
-        if (move.result) {
-            alert(`${move.result} won!`)
+        if (move.isWinner) {
+            alert(`${move.moved} won!`)
         }
     }
 
