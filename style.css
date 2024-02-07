@@ -10,7 +10,6 @@
 h1 {
     word-wrap: break-word;
     text-align: center;
-    width: 30%;
 }
 .board {
     display: inline-grid;
