@@ -2,33 +2,33 @@ const ROW_DATA_ATTRIB = "data-row-number";
 const COL_DATA_ATTRIB = "data-col-number";
 
 const gameSettings = (function () {
-    let maxRowsColsDiv = document.querySelector("#board-size");
-    let blocksNeededToWinDiv = document.querySelector("#winning-length");
+    let sideLengthsDiv = document.querySelector("#board-size");
+    let requiredConsecPlacementsDiv = document.querySelector("#winning-length");
 
-    function getMaxRowsCols() {
-        return parseInt(maxRowsColsDiv.value);
+    function getsideLengths() {
+        return parseInt(sideLengthsDiv.value);
     }
-    function getBlocksNeededToWin() {
-        return parseInt(blocksNeededToWinDiv.value);
+    function getrequiredConsecPlacements() {
+        return parseInt(requiredConsecPlacementsDiv.value);
     }
     return {
-        getMaxRowsCols,
-        getBlocksNeededToWin
+        getsideLengths,
+        getrequiredConsecPlacements
     }
 })()
 const game = (function () {
-    let maxRowsCols;
-    let blocksNeededToWin;
+    let sideLengths;
+    let requiredConsecPlacements;
     const gameboard = [];
     const moves = ["X", "O"];
     let lastMoveIndex = 0;
 
-    function setMaxRowsCols(newMaxRowsCols) {
-        maxRowsCols = newMaxRowsCols;
+    function setsideLengths(newsideLengths) {
+        sideLengths = newsideLengths;
     }
 
-    function setBlocksNeededToWin(newBlocksNededToWin) {
-        blocksNeededToWin = newBlocksNededToWin;
+    function setrequiredConsecPlacements(newBlocksNededToWin) {
+        requiredConsecPlacements = newBlocksNededToWin;
     }
 
     function _getFromBoard(row, col) {
@@ -63,7 +63,7 @@ const game = (function () {
 
     function addMove(row, col) {
         let { nextMove, nextMoveIndex } = _getNextMove();
-        if (row >= maxRowsCols || col >= maxRowsCols) {
+        if (row >= sideLengths || col >= sideLengths) {
             return;
         }
         if (!moves.includes(nextMove)) {
@@ -88,7 +88,7 @@ const game = (function () {
         }
 
         // check if move won
-        if (equalities === blocksNeededToWin) {
+        if (equalities === requiredConsecPlacements) {
             winningCells.unshift({ row, col }); //add initial row, col to winningCells[0]
             return winningCells;
         }
@@ -146,14 +146,14 @@ const game = (function () {
         gameboard,
         addMove,
         resetBoard,
-        setMaxRowsCols,
-        setBlocksNeededToWin
+        setsideLengths,
+        setrequiredConsecPlacements
     }
 
 })()
 
 const domHandling = (function () {
-    let maxRowsCols;
+    let sideLengths;
     const boardContainer = document.querySelector(".board-container");
     let board = document.createElement("div");
     board.classList.add("board");
@@ -162,8 +162,8 @@ const domHandling = (function () {
     let colsCache = [];
     let gameRunning = true;
 
-    function setMaxRowsCols(newMaxRowsCols) {
-        maxRowsCols = newMaxRowsCols;
+    function setsideLengths(newsideLengths) {
+        sideLengths = newsideLengths;
     }
     function _render(parent, child, prepend = false) {
         let children = [];
@@ -213,18 +213,18 @@ const domHandling = (function () {
 
     function createBoard() {
         board.removeAttribute("style");
-        board.style.gridTemplateRows = `repeat(${maxRowsCols}, 1fr)`;
+        board.style.gridTemplateRows = `repeat(${sideLengths}, 1fr)`;
 
-        for (let i = 0; i < maxRowsCols; i++) {
+        for (let i = 0; i < sideLengths; i++) {
             let row = document.createElement("div");
             row.classList.add("row");
             row.setAttribute(ROW_DATA_ATTRIB, i);
             row.addEventListener("click", _cellClickHandler);
             row.removeAttribute("style");
-            row.style.gridTemplateColumns = `repeat(${maxRowsCols}, 1fr)`;
+            row.style.gridTemplateColumns = `repeat(${sideLengths}, 1fr)`;
             rowsCache[i] = row;
             colsCache[i] = [];
-            for (j = 0; j < maxRowsCols; j++) {
+            for (j = 0; j < sideLengths; j++) {
                 let col = document.createElement("div");
                 col.classList.add("col");
                 col.setAttribute(COL_DATA_ATTRIB, j);
@@ -244,7 +244,7 @@ const domHandling = (function () {
         createBoard();
     }
     return {
-        setMaxRowsCols,
+        setsideLengths,
         createBoard,
         resetBoard
     }
@@ -252,10 +252,10 @@ const domHandling = (function () {
 })()
 
 function setGame() {
-    console.log(gameSettings.getBlocksNeededToWin());
-    game.setMaxRowsCols(gameSettings.getMaxRowsCols());
-    game.setBlocksNeededToWin(gameSettings.getBlocksNeededToWin());
-    domHandling.setMaxRowsCols(gameSettings.getMaxRowsCols());
+    console.log(gameSettings.getrequiredConsecPlacements());
+    game.setsideLengths(gameSettings.getsideLengths());
+    game.setrequiredConsecPlacements(gameSettings.getrequiredConsecPlacements());
+    domHandling.setsideLengths(gameSettings.getsideLengths());
 }
 
 const resetButton = document.querySelector(".reset");
